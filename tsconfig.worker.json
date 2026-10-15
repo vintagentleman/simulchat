@@ -1,0 +1,17 @@
+{
+	"compilerOptions": {
+		"strict": true,
+		"skipLibCheck": true,
+		"noEmit": true,
+		"target": "es2023",
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"lib": ["es2023"],
+		"types": ["./worker-configuration.d.ts"],
+		"erasableSyntaxOnly": true,
+		"verbatimModuleSyntax": true,
+		"isolatedModules": true,
+		"allowImportingTsExtensions": true
+	},
+	"include": ["worker/**/*.ts"]
+}

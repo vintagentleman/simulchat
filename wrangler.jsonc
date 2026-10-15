@@ -1,0 +1,33 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "simulchat",
+	"main": "worker/index.ts",
+	"compatibility_date": "2026-10-01",
+	"workers_dev": true,
+	"preview_urls": false,
+	"durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "Room" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+	"ratelimits": [
+		{ "name": "UPGRADES", "namespace_id": "1001", "simple": { "limit": 20, "period": 60 } },
+		{ "name": "FRAMES", "namespace_id": "1002", "simple": { "limit": 300, "period": 10 } },
+	],
+	"vars": { "ALLOWED_ORIGINS": ["https://vintagentleman.github.io"] },
+	"env": {
+		"local": {
+			"durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "Room" }] },
+			"ratelimits": [
+				{ "name": "UPGRADES", "namespace_id": "1001", "simple": { "limit": 100000, "period": 60 } },
+				{ "name": "FRAMES", "namespace_id": "1002", "simple": { "limit": 100000, "period": 10 } },
+			],
+			"vars": { "ALLOWED_ORIGINS": ["http://localhost:5173", "http://localhost:4173"] },
+		},
+		"limits": {
+			"durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "Room" }] },
+			"ratelimits": [
+				{ "name": "UPGRADES", "namespace_id": "2001", "simple": { "limit": 3, "period": 10 } },
+				{ "name": "FRAMES", "namespace_id": "2002", "simple": { "limit": 5, "period": 10 } },
+			],
+			"vars": { "ALLOWED_ORIGINS": ["http://localhost:4173"] },
+		},
+	},
+}

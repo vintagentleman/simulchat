@@ -1,7 +1,7 @@
 import type { Peer } from './rules.ts';
 import { acceptsFrame, admit, upgradeRoom } from './rules.ts';
 
-type Attachment = { ip: string; clientId: string; joinedAt: number };
+type Attachment = { ip: string; clientId: string; joinedAt: number; closedByRelay?: true };
 
 const OPEN = 1;
 
@@ -56,8 +56,15 @@ export class Room {
 		for (const ws of peers) ws.send(String(peers.length));
 	}
 
-	drop(ws: WebSocket, code: number, reason: string) {
+	// The relay announces a socket it closes itself at once, so its departure is not announced again.
+	close(ws: WebSocket, code: number, reason: string) {
+		const attachment = ws.deserializeAttachment() as Attachment;
+		ws.serializeAttachment({ ...attachment, closedByRelay: true } satisfies Attachment);
 		ws.close(code, reason);
+	}
+
+	drop(ws: WebSocket, code: number, reason: string) {
+		this.close(ws, code, reason);
 		this.announce(this.open());
 	}
 
@@ -71,7 +78,7 @@ export class Room {
 			clientId,
 			now,
 		);
-		for (const i of verdict.evict) sockets[i].close(1001, 'replaced');
+		for (const i of verdict.evict) this.close(sockets[i], 1001, 'replaced');
 		const [client, server] = Object.values(new WebSocketPair());
 		if (!verdict.admit) {
 			// Accepted, then closed: a close code needs a finished handshake; accept() logs it lost.
@@ -109,8 +116,8 @@ export class Room {
 	}
 
 	leave(ws: WebSocket) {
-		if (this.ctx.getTags(ws).includes('line')) {
-			this.announce(this.open().filter((peer) => peer !== ws));
-		}
+		if (!this.ctx.getTags(ws).includes('line')) return;
+		if ((ws.deserializeAttachment() as Attachment).closedByRelay) return;
+		this.announce(this.open().filter((peer) => peer !== ws));
 	}
 }

@@ -39,16 +39,19 @@ test.describe('relay rules', () => {
 		expect(await connect(8787, room(), ORIGIN, 'short').opened).toBe(false);
 	});
 
-	test('a reconnect with the same client id replaces the earlier socket', async () => {
+	test('a reconnect with the same client id replaces the earlier socket, announced once', async () => {
 		const id = room();
 		const a = connect(8787, id);
 		await a.opened;
 		const b = connect(8787, id, ORIGIN, 'BBBBBBBBBBBBBBBBBBBBBB');
 		await b.opened;
+		await expect.poll(() => a.received).toEqual(['1', '2']);
 		const again = connect(8787, id, ORIGIN, 'BBBBBBBBBBBBBBBBBBBBBB');
 		expect(await again.opened).toBe(true);
 		expect(await b.closed).toBe(1001);
-		await expect.poll(() => again.received).toContain('2');
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		expect(again.received).toEqual(['2']);
+		expect(a.received).toEqual(['1', '2', '2']);
 		a.ws.close();
 		again.ws.close();
 	});

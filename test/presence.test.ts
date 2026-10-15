@@ -9,7 +9,6 @@ import {
 	step,
 } from '../src/lib/presence.ts';
 
-// Feeds events at the given times; returns the final state and every tone played.
 function run(events: [number, PresenceEvent][], from: Presence = initialPresence) {
 	let state = from;
 	const tones: string[] = [];

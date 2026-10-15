@@ -4,6 +4,7 @@ import { applyI18n } from './app/dom.ts';
 import type { Line } from './app/line.ts';
 import { enterLine } from './app/line.ts';
 import { refreshTopbar, renderLanding, renderLine } from './app/render.ts';
+import { armTones, showPartnerDot } from './app/signal.ts';
 import { app, locale, setLocale, writeStored } from './app/store.ts';
 import { applyTheme, pinnedTheme, pinScheme } from './app/theme.ts';
 import { t } from './i18n.ts';
@@ -58,4 +59,6 @@ window.addEventListener('hashchange', route);
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
 	if (pinnedTheme() === null) refreshTopbar();
 });
+armTones();
+showPartnerDot(false);
 route();

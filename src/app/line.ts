@@ -2,19 +2,23 @@ import { t } from '../i18n.ts';
 import type { LineKeys } from '../lib/crypto.ts';
 import { deriveLine, openFrame, sealFrame } from '../lib/crypto.ts';
 import { newClientId } from '../lib/fragment.ts';
+import type { PresenceEvent, Status as PresenceStatus } from '../lib/presence.ts';
+import { initialPresence, statusOf, step } from '../lib/presence.ts';
 import { serialQueue } from '../lib/queue.ts';
 import type { SendKey } from '../lib/send-key.ts';
 import { isErase, readSendKey } from '../lib/send-key.ts';
 import { throttle } from '../lib/throttle.ts';
 import { bind, slot } from './dom.ts';
+import { playTone, showPartnerDot } from './signal.ts';
 import { app, locale, readStored, writeStored } from './store.ts';
 
 const PING_MS = 10_000;
 const PONG_TIMEOUT_MS = 30_000;
 const THROTTLE_MS = 40;
+const HEARTBEAT_MS = 15_000;
 const BUSY = 4001;
 
-type Status = 'connecting' | 'waiting' | 'connected' | 'left' | 'busy';
+type Status = PresenceStatus | 'busy';
 
 const STATUS_KEYS: Record<Status, string> = {
 	connecting: 'statusConnecting',
@@ -42,9 +46,9 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 	const clientId = newClientId();
 	let keys: LineKeys | null = null;
 	let socket: WebSocket | null = null;
-	let status: Status = 'connecting';
-	let partner = false;
-	let hadPartner = false;
+	let presence = initialPresence;
+	let busy = false;
+	let lastSent = 0;
 	let attempt = 0;
 	// When the oldest unanswered ping went out, or 0 while every ping is answered.
 	let pingSent = 0;
@@ -55,21 +59,33 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 	const outbound = serialQueue();
 	const inbound = serialQueue();
 
-	const setStatus = (next: Status) => {
-		status = next;
-		bind(statusText, STATUS_KEYS[next]);
-		invite.hidden = next !== 'waiting' && next !== 'left';
-		retryButton.hidden = next !== 'busy';
+	const render = () => {
+		const status: Status = busy ? 'busy' : statusOf(presence);
+		bind(statusText, STATUS_KEYS[status]);
+		invite.hidden = status !== 'waiting' && status !== 'left';
+		retryButton.hidden = status !== 'busy';
 		const title = t(locale, 'appTitle');
-		document.title = next === 'connected' ? `● ${title}` : title;
+		document.title = status === 'connected' ? `● ${title}` : title;
+		showPartnerDot(presence.partner);
+		if (!presence.partner) mirror.textContent = '';
+	};
+
+	const apply = (event: PresenceEvent) => {
+		const result = step(presence, event, Date.now());
+		presence = result.state;
+		if (result.tone !== null) playTone(result.tone);
+		render();
 	};
 
 	const sendField = () => {
 		const text = composer.value;
 		outbound.run(async () => {
-			if (keys === null || !partner || socket?.readyState !== WebSocket.OPEN) return;
+			if (keys === null || presence.count !== 2 || socket?.readyState !== WebSocket.OPEN) return;
 			const frame = await sealFrame(keys.key, text);
-			if (partner && socket?.readyState === WebSocket.OPEN) socket.send(frame);
+			if (presence.count === 2 && socket?.readyState === WebSocket.OPEN) {
+				socket.send(frame);
+				lastSent = Date.now();
+			}
 		});
 	};
 	const typed = throttle(sendField, THROTTLE_MS);
@@ -83,9 +99,11 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 
 	const receive = async (data: string | ArrayBuffer) => {
 		if (typeof data !== 'string') {
-			if (keys === null || !partner) return;
+			if (keys === null || presence.count !== 2) return;
 			const text = await openFrame(keys.key, data);
-			if (text !== null && partner) mirror.textContent = text;
+			if (text === null || presence.count !== 2) return;
+			apply({ type: 'frame' });
+			mirror.textContent = text;
 			return;
 		}
 		if (data === 'pong') {
@@ -93,26 +111,18 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 			return;
 		}
 		attempt = 0;
-		partner = data === '2';
-		if (partner) {
-			hadPartner = true;
-			setStatus('connected');
-			sendField();
-		} else {
-			mirror.textContent = '';
-			setStatus(hadPartner ? 'left' : 'waiting');
-		}
+		apply({ type: 'count', count: Number(data) });
+		if (presence.count === 2) sendField();
 	};
 
 	const lost = (code: number) => {
 		socket = null;
-		partner = false;
-		mirror.textContent = '';
 		if (code === BUSY) {
-			setStatus('busy');
+			busy = true;
+			render();
 			return;
 		}
-		setStatus('connecting');
+		apply({ type: 'dropped' });
 		retryTimer = setTimeout(connect, Math.min(500 * 2 ** attempt, 8000));
 		attempt += 1;
 	};
@@ -141,15 +151,18 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 
 	// Not timed from the last pong: a hidden tab's timer may fire only once a minute.
 	const pinger = setInterval(() => {
+		apply({ type: 'tick' });
 		const ws = socket;
 		if (ws?.readyState !== WebSocket.OPEN) return;
 		if (pingSent !== 0 && Date.now() - pingSent > PONG_TIMEOUT_MS) {
 			// A dead connection may never finish closing; stop waiting for it.
 			lost(1006);
 			ws.close();
-		} else {
-			ping(ws);
+			return;
 		}
+		ping(ws);
+		// Frames are snapshots, so resending the field is a heartbeat that changes nothing.
+		if (presence.count === 2 && Date.now() - lastSent >= HEARTBEAT_MS) sendField();
 	}, PING_MS);
 
 	const renderSendKey = () => {
@@ -197,13 +210,14 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 	}
 	retryButton.addEventListener('click', () => {
 		attempt = 0;
-		setStatus('connecting');
+		busy = false;
+		render();
 		connect();
 	});
 
 	linkField.value = location.href;
 	renderSendKey();
-	setStatus('connecting');
+	render();
 	void deriveLine(secret).then((derived) => {
 		keys = derived;
 		connect();
@@ -220,9 +234,10 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 			socket?.close(1000);
 			socket = null;
 			document.title = t(locale, 'appTitle');
+			showPartnerDot(false);
 		},
 		relabel() {
-			setStatus(status);
+			render();
 		},
 	};
 }

@@ -3,7 +3,7 @@ import type { LineKeys } from '../lib/crypto.ts';
 import { deriveLine, openFrame, sealFrame } from '../lib/crypto.ts';
 import { newClientId } from '../lib/fragment.ts';
 import type { PresenceEvent, Status as PresenceStatus } from '../lib/presence.ts';
-import { initialPresence, statusOf, step } from '../lib/presence.ts';
+import { initialPresence, nextDeadline, statusOf, step } from '../lib/presence.ts';
 import { serialQueue } from '../lib/queue.ts';
 import type { SendKey } from '../lib/send-key.ts';
 import { isErase, readSendKey } from '../lib/send-key.ts';
@@ -54,6 +54,7 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 	let pingSent = 0;
 	let left = false;
 	let retryTimer: ReturnType<typeof setTimeout> | undefined;
+	let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
 	let sendKey: SendKey = readSendKey(readStored('send-key'));
 	// Sealing and opening are asynchronous; the queues keep frames in order both ways.
 	const outbound = serialQueue();
@@ -74,6 +75,11 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 		const result = step(presence, event, Date.now());
 		presence = result.state;
 		if (result.tone !== null) playTone(result.tone);
+		clearTimeout(deadlineTimer);
+		const deadline = nextDeadline(presence);
+		if (deadline !== null) {
+			deadlineTimer = setTimeout(() => apply({ type: 'tick' }), Math.max(0, deadline - Date.now()));
+		}
 		render();
 	};
 
@@ -151,7 +157,6 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 
 	// Not timed from the last pong: a hidden tab's timer may fire only once a minute.
 	const pinger = setInterval(() => {
-		apply({ type: 'tick' });
 		const ws = socket;
 		if (ws?.readyState !== WebSocket.OPEN) return;
 		if (pingSent !== 0 && Date.now() - pingSent > PONG_TIMEOUT_MS) {
@@ -230,6 +235,7 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 			inbound.stop();
 			clearInterval(pinger);
 			clearTimeout(retryTimer);
+			clearTimeout(deadlineTimer);
 			typed.cancel();
 			socket?.close(1000);
 			socket = null;

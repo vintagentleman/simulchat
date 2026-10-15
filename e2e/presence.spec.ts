@@ -26,6 +26,16 @@ test('a rising tone when the other side joins, a falling one when they leave', a
 	await expect.poll(tonesOf(a)).toEqual([...JOIN, ...LEAVE]);
 });
 
+test('a line started with the Start button plays the join tone without another click', async ({
+	join,
+}) => {
+	const a = await join('/', recordTones);
+	await a.click('#start');
+	await expect(a.locator('.status-text')).toHaveText(en.statusWaiting);
+	await join(`/${new URL(a.url()).hash}`);
+	await expect.poll(tonesOf(a)).toEqual(JOIN);
+});
+
 test('a partner whose connection silently dies is shown as gone', async ({ join }) => {
 	const link = newLink();
 	const a = await join(link, (page) => page.clock.install());

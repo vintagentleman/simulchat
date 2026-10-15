@@ -10,7 +10,7 @@ import { throttle } from '../lib/throttle.ts';
 import type { Connection } from './connection.ts';
 import { openConnection } from './connection.ts';
 import { bind, slot } from './dom.ts';
-import { playTone, showPartnerDot } from './signal.ts';
+import { playTone, showPartnerDot, tonesArmed } from './signal.ts';
 import { app, locale, readStored, writeStored } from './store.ts';
 
 const THROTTLE_MS = 40;
@@ -42,7 +42,8 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 	let clientId = newClientId();
 	let view: View = { status: 'connecting', partner: false, mirror: '' };
 	let caughtUp = false;
-	let lastUsed: string | null = null;
+	// A Start-button click has already armed this tab's audio, so it starts as the one used.
+	let lastUsed: string | null = document.hasFocus() && tonesArmed() ? tabId : null;
 	let connection: Connection | null = null;
 	let channel: BroadcastChannel | null = null;
 	let sendKey: SendKey = readSendKey(readStored('send-key'));
@@ -150,6 +151,14 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 	};
 	document.addEventListener('pointerdown', used, { signal: ended.signal });
 	document.addEventListener('keydown', used, { signal: ended.signal });
+	// The browser focuses a neighbouring tab when one closes; an armed one takes over the tones.
+	addEventListener(
+		'focus',
+		() => {
+			if (tonesArmed()) used();
+		},
+		{ signal: ended.signal },
+	);
 
 	composer.addEventListener('input', () => typed.call());
 	composer.addEventListener('keydown', (event) => {
@@ -199,6 +208,7 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 		channel = new BroadcastChannel(name);
 		channel.addEventListener('message', (event: MessageEvent<TabMessage>) => receive(event.data));
 		post({ type: 'hello' });
+		if (lastUsed === tabId) post({ type: 'used', tabId });
 		navigator.locks.request(name, { signal: ended.signal }, () => lead(keys)).catch(() => {});
 	});
 

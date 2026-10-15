@@ -85,6 +85,19 @@ test('a tone plays once, in the tab used last', async ({ join }) => {
 	expect(await tonesOf(a1)()).toEqual([]);
 });
 
+test('closing the twin used last passes the tones to the remaining tab', async ({ join }) => {
+	const link = newLink();
+	const a1 = await join(link, (page) => recordTones(page.context()));
+	await a1.locator('#composer').click();
+	const a2 = await twin(a1, link);
+	await a2.locator('#composer').click();
+	await a2.close();
+	// When a tab closes, the browser focuses a neighbouring one.
+	await a1.evaluate(() => window.dispatchEvent(new Event('focus')));
+	await join(link);
+	await expect.poll(tonesOf(a1)).toEqual(JOIN);
+});
+
 test('the other side reloading plays no tone', async ({ join }) => {
 	const link = newLink();
 	const a = await join(link, recordTones);

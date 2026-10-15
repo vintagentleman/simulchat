@@ -22,6 +22,10 @@ export function showPartnerDot(on: boolean) {
 
 let audio: AudioContext | null = null;
 
+export function tonesArmed(): boolean {
+	return audio !== null;
+}
+
 // Browsers allow sound only after a gesture, so the context is created on the first one.
 export function armTones() {
 	const arm = () => {

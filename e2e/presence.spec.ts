@@ -1,43 +1,8 @@
 import type { Page, WebSocketRoute } from '@playwright/test';
 
-import { en, expect, newLink, test } from './fixtures.ts';
+import { en, expect, JOIN, LEAVE, newLink, recordTones, test, tonesOf } from './fixtures.ts';
 
 const RELAY = /:8787\//;
-
-// Records each synthesised note's frequency instead of playing it.
-async function recordTones(page: Page) {
-	await page.addInitScript(() => {
-		const tones: number[] = [];
-		Object.assign(window, { tones });
-		class RecordingAudioContext {
-			currentTime = 0;
-			destination = {};
-			createGain() {
-				return {
-					gain: { setValueAtTime() {}, linearRampToValueAtTime() {} },
-					connect: (node: unknown) => node,
-				};
-			}
-			createOscillator() {
-				return {
-					type: 'sine',
-					frequency: { value: 0 },
-					connect: (node: unknown) => node,
-					start() {
-						tones.push(this.frequency.value);
-					},
-					stop() {},
-				};
-			}
-		}
-		Object.assign(window, { AudioContext: RecordingAudioContext });
-	});
-}
-
-const tonesOf = (page: Page) => () =>
-	page.evaluate(() => (window as unknown as { tones: number[] }).tones);
-const JOIN = [660, 880];
-const LEAVE = [880, 660];
 
 test('the tab icon shows a dot while the other side is there', async ({ join }) => {
 	const link = newLink();

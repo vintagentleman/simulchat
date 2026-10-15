@@ -42,3 +42,37 @@ export const test = base.extend<{
 export { expect };
 
 export const mirrorOf = (page: Page) => () => page.locator('.mirror').textContent();
+
+export async function recordTones(target: Page | BrowserContext) {
+	await target.addInitScript(() => {
+		const tones: number[] = [];
+		Object.assign(window, { tones });
+		class RecordingAudioContext {
+			currentTime = 0;
+			destination = {};
+			createGain() {
+				return {
+					gain: { setValueAtTime() {}, linearRampToValueAtTime() {} },
+					connect: (node: unknown) => node,
+				};
+			}
+			createOscillator() {
+				return {
+					type: 'sine',
+					frequency: { value: 0 },
+					connect: (node: unknown) => node,
+					start() {
+						tones.push(this.frequency.value);
+					},
+					stop() {},
+				};
+			}
+		}
+		Object.assign(window, { AudioContext: RecordingAudioContext });
+	});
+}
+
+export const tonesOf = (page: Page) => () =>
+	page.evaluate(() => (window as unknown as { tones: number[] }).tones);
+export const JOIN = [660, 880];
+export const LEAVE = [880, 660];

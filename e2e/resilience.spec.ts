@@ -45,13 +45,35 @@ test('a connection that stops answering pings is abandoned and replaced', async 
 	const b = await join(link);
 	await expect(a.locator('.status-text')).toHaveText(en.statusConnected);
 	dropPongs = true;
-	await a.clock.runFor(41_000);
+	// Silence counts from the first unanswered ping, one 10-second tick in.
+	await a.clock.runFor(51_000);
 	dropPongs = false;
 	await a.clock.runFor(1_000);
 	await expect.poll(() => sockets).toBe(2);
 	await expect(a.locator('.status-text')).toHaveText(en.statusConnected);
 	await a.locator('#composer').pressSequentially('alive');
 	await expect.poll(mirrorOf(b)).toBe('alive');
+});
+
+test('a hidden tab’s throttled timers keep a healthy call', async ({ join }) => {
+	const link = newLink();
+	let sockets = 0;
+	const a = await join(link, async (page) => {
+		await page.clock.install();
+		await page.routeWebSocket(RELAY, (ws) => {
+			sockets += 1;
+			ws.connectToServer();
+		});
+	});
+	const b = await join(link);
+	await expect(a.locator('.status-text')).toHaveText(en.statusConnected);
+	// Chrome wakes a long-hidden tab's timers once a minute: one jump, one firing.
+	await a.clock.fastForward(60_000);
+	await a.waitForTimeout(1_000);
+	expect(sockets).toBe(1);
+	await expect(b.locator('.status-text')).toHaveText(en.statusConnected);
+	await a.locator('#composer').pressSequentially('still here');
+	await expect.poll(mirrorOf(b)).toBe('still here');
 });
 
 test('typing fast and erasing at once leaves the partner’s mirror empty', async ({ join }) => {

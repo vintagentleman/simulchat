@@ -45,7 +45,8 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 	let partner = false;
 	let hadPartner = false;
 	let attempt = 0;
-	let lastPong = 0;
+	// When the oldest unanswered ping went out, or 0 while every ping is answered.
+	let pingSent = 0;
 	let left = false;
 	let retryTimer: ReturnType<typeof setTimeout> | undefined;
 	let sendKey: SendKey = readSendKey(readStored('send-key'));
@@ -87,7 +88,7 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 			return;
 		}
 		if (data === 'pong') {
-			lastPong = Date.now();
+			pingSent = 0;
 			return;
 		}
 		attempt = 0;
@@ -115,14 +116,19 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 		attempt += 1;
 	};
 
+	const ping = (ws: WebSocket) => {
+		if (pingSent === 0) pingSent = Date.now();
+		ws.send('ping');
+	};
+
 	const connect = () => {
 		if (keys === null || left) return;
 		const ws = new WebSocket(`${import.meta.env.VITE_RELAY_URL}/${keys.roomId}?c=${clientId}`);
 		ws.binaryType = 'arraybuffer';
 		socket = ws;
 		ws.addEventListener('open', () => {
-			lastPong = Date.now();
-			ws.send('ping');
+			pingSent = 0;
+			ping(ws);
 		});
 		ws.addEventListener('message', (event: MessageEvent<string | ArrayBuffer>) => {
 			if (ws === socket) inbound = inbound.then(() => receive(event.data));
@@ -132,15 +138,17 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 		});
 	};
 
+	// Silence counts from the oldest unanswered ping, not from the last pong: a hidden tab's
+	// timers may fire only once a minute, and a late but answered ping is no fault.
 	const pinger = setInterval(() => {
 		const ws = socket;
 		if (ws?.readyState !== WebSocket.OPEN) return;
-		if (Date.now() - lastPong > PONG_TIMEOUT_MS) {
+		if (pingSent !== 0 && Date.now() - pingSent > PONG_TIMEOUT_MS) {
 			// A dead connection may never finish closing; stop waiting for it.
 			lost(1006);
 			ws.close();
 		} else {
-			ws.send('ping');
+			ping(ws);
 		}
 	}, PING_MS);
 

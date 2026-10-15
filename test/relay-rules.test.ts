@@ -51,6 +51,11 @@ test('liveness: a recent ping, or a recent join without a ping yet', () => {
 	expect(isLive({ clientId: 'a', lastPing: null, joinedAt: now - LIVE_MS }, now)).toBe(false);
 });
 
+test('a tab pinging once a minute, as a long-hidden tab does, stays live', () => {
+	const now = 1_000_000;
+	expect(isLive({ clientId: 'a', lastPing: now - 61_000, joinedAt: 0 }, now)).toBe(true);
+});
+
 test('admission: two live peers make the line busy; dead peers are evicted to make room', () => {
 	const now = 1_000_000;
 	const live = (clientId: string) => ({ clientId, lastPing: now, joinedAt: now });

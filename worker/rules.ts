@@ -1,4 +1,5 @@
-export const LIVE_MS = 30_000;
+// Chrome wakes a long-hidden tab's timers once a minute, so liveness has to outlast a minute.
+export const LIVE_MS = 75_000;
 export const MAX_FRAME_BYTES = 8192;
 const ROOM_PATH = /^\/([0-9a-f]{32})$/;
 const CLIENT_ID = /^[A-Za-z0-9_-]{22}$/;

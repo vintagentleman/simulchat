@@ -90,6 +90,8 @@ export class Room {
 	}
 
 	async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
+		// A busy socket still delivers frames until its close completes; it is not on the line.
+		if (!this.ctx.getTags(ws).includes('line')) return;
 		if (!acceptsFrame(message)) {
 			this.drop(ws, 1008, 'frame');
 			return;

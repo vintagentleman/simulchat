@@ -69,6 +69,24 @@ test.describe('relay rules', () => {
 		b.ws.close();
 	});
 
+	test('a busy caller’s frames never reach the line', async () => {
+		const id = room();
+		const a = connect(8787, id);
+		await a.opened;
+		const b = connect(8787, id);
+		await b.opened;
+		await expect.poll(() => a.received).toContain('2');
+		const c = connect(8787, id);
+		// Sent before the busy close completes, as a hostile third holder of the link would.
+		c.ws.addEventListener('open', () => c.ws.send(new Uint8Array(28)));
+		expect(await c.closed).toBe(4001);
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		expect(a.received).not.toContain(28);
+		expect(b.received).not.toContain(28);
+		a.ws.close();
+		b.ws.close();
+	});
+
 	test('a text frame closes the sender with 1008', async () => {
 		const a = connect(8787, room());
 		await a.opened;

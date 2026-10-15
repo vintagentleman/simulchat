@@ -2,6 +2,7 @@ import { t } from '../i18n.ts';
 import type { LineKeys } from '../lib/crypto.ts';
 import { deriveLine, openFrame, sealFrame } from '../lib/crypto.ts';
 import { newClientId } from '../lib/fragment.ts';
+import { serialQueue } from '../lib/queue.ts';
 import type { SendKey } from '../lib/send-key.ts';
 import { isErase, readSendKey } from '../lib/send-key.ts';
 import { throttle } from '../lib/throttle.ts';
@@ -50,9 +51,9 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 	let left = false;
 	let retryTimer: ReturnType<typeof setTimeout> | undefined;
 	let sendKey: SendKey = readSendKey(readStored('send-key'));
-	// Sealing and opening are asynchronous; chaining keeps frames in order both ways.
-	let outbound: Promise<void> = Promise.resolve();
-	let inbound: Promise<void> = Promise.resolve();
+	// Sealing and opening are asynchronous; the queues keep frames in order both ways.
+	const outbound = serialQueue();
+	const inbound = serialQueue();
 
 	const setStatus = (next: Status) => {
 		status = next;
@@ -65,7 +66,7 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 
 	const sendField = () => {
 		const text = composer.value;
-		outbound = outbound.then(async () => {
+		outbound.run(async () => {
 			if (keys === null || !partner || socket?.readyState !== WebSocket.OPEN) return;
 			const frame = await sealFrame(keys.key, text);
 			if (partner && socket?.readyState === WebSocket.OPEN) socket.send(frame);
@@ -131,7 +132,7 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 			ping(ws);
 		});
 		ws.addEventListener('message', (event: MessageEvent<string | ArrayBuffer>) => {
-			if (ws === socket) inbound = inbound.then(() => receive(event.data));
+			if (ws === socket) inbound.run(() => receive(event.data));
 		});
 		ws.addEventListener('close', (event) => {
 			if (ws === socket && !left) lost(event.code);
@@ -211,6 +212,8 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 	return {
 		leave() {
 			left = true;
+			outbound.stop();
+			inbound.stop();
 			clearInterval(pinger);
 			clearTimeout(retryTimer);
 			typed.cancel();

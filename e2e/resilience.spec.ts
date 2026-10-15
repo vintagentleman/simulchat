@@ -57,15 +57,23 @@ test('a connection that stops answering pings is abandoned and replaced', async 
 test('a hidden tab’s throttled timers keep a healthy call', async ({ join }) => {
 	const link = newLink();
 	let sockets = 0;
+	let pongs = 0;
 	const a = await join(link, async (page) => {
 		await page.clock.install();
 		await page.routeWebSocket(RELAY, (ws) => {
 			sockets += 1;
-			ws.connectToServer();
+			const server = ws.connectToServer();
+			ws.onMessage((message) => server.send(message));
+			server.onMessage((message) => {
+				if (message === 'pong') pongs += 1;
+				ws.send(message);
+			});
 		});
 	});
 	const b = await join(link);
 	await expect(a.locator('.status-text')).toHaveText(en.statusConnected);
+	// The opening ping must be answered first, or the jump makes it look 60 seconds old.
+	await expect.poll(() => pongs).toBeGreaterThan(0);
 	// Chrome wakes a long-hidden tab's timers once a minute: one jump, one firing.
 	await a.clock.fastForward(60_000);
 	await a.waitForTimeout(1_000);

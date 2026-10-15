@@ -138,8 +138,7 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 		});
 	};
 
-	// Silence counts from the oldest unanswered ping, not from the last pong: a hidden tab's
-	// timers may fire only once a minute, and a late but answered ping is no fault.
+	// Not timed from the last pong: a hidden tab's timer may fire only once a minute.
 	const pinger = setInterval(() => {
 		const ws = socket;
 		if (ws?.readyState !== WebSocket.OPEN) return;
@@ -186,7 +185,6 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 				bind(copyButton, 'copied');
 				setTimeout(() => bind(copyButton, 'copyLink'), 1500);
 			})
-			// No clipboard access: select the link so it can be copied by hand.
 			.catch(() => linkField.select());
 	});
 	if (typeof navigator.share === 'function') {

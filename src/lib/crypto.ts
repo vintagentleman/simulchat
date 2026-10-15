@@ -35,7 +35,6 @@ export async function sealFrame(key: CryptoKey, text: string): Promise<Uint8Arra
 	return frame;
 }
 
-// Null for anything that is not a frame sealed under this key.
 export async function openFrame(key: CryptoKey, frame: ArrayBuffer): Promise<string | null> {
 	if (frame.byteLength < IV_BYTES + TAG_BYTES) return null;
 	try {

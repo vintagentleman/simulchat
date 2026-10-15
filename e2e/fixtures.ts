@@ -25,7 +25,6 @@ export const test = base.extend<{
 		},
 		{ auto: true },
 	],
-	// Each person gets their own browser context, as two people on two machines would.
 	join: async ({ browser }, use) => {
 		const contexts: BrowserContext[] = [];
 		await use(async (link, before) => {

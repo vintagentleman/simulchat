@@ -19,7 +19,6 @@ test('a connection that dies without closing reconnects and resyncs', async ({ j
 	await expect(b.locator('.status-text')).toHaveText(en.statusConnected);
 	await a.locator('#composer').pressSequentially('before');
 	await expect.poll(mirrorOf(b)).toBe('before');
-	// Close only the page's side: the relay still holds a socket it believes is live.
 	await routes[0].close({ code: 4000 });
 	await expect(a.locator('.status-text')).toHaveText(en.statusConnected);
 	expect(routes).toHaveLength(2);

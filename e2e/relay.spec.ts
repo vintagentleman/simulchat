@@ -77,7 +77,7 @@ test.describe('relay rules', () => {
 		await b.opened;
 		await expect.poll(() => a.received).toContain('2');
 		const c = connect(8787, id);
-		// Sent before the busy close completes, as a hostile third holder of the link would.
+		// Must go out before the busy close completes, or the test proves nothing.
 		c.ws.addEventListener('open', () => c.ws.send(new Uint8Array(28)));
 		expect(await c.closed).toBe(4001);
 		await new Promise((resolve) => setTimeout(resolve, 300));

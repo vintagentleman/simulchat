@@ -9,9 +9,7 @@ export function readSendKey(stored: string | null): SendKey {
 	return stored === 'ctrlEnter' ? 'ctrlEnter' : 'enter';
 }
 
-// Whether a keydown erases the field; every other press is left to the browser.
-// keyCode 229 catches the Enter that commits an IME composition in Safari, which
-// reports isComposing as false.
+// keyCode 229: Safari commits an IME composition with an Enter whose isComposing is false.
 export function isErase(mode: SendKey, press: KeyPress): boolean {
 	if (press.key !== 'Enter' || press.isComposing || press.keyCode === 229) return false;
 	if (press.shiftKey || press.altKey) return false;

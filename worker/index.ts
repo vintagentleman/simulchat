@@ -29,8 +29,7 @@ export default {
 	},
 } satisfies ExportedHandler<Env>;
 
-// Plain class: no RPC is needed, and no base class keeps the file import-free.
-// The runtime's list of accepted sockets is the whole state of the line.
+// No fields: hibernation discards memory, so the accepted sockets are the line's whole state.
 export class Room {
 	ctx: DurableObjectState;
 	env: Env;
@@ -75,9 +74,7 @@ export class Room {
 		for (const i of verdict.evict) sockets[i].close(1001, 'replaced');
 		const [client, server] = Object.values(new WebSocketPair());
 		if (!verdict.admit) {
-			// A close code only reaches the page after a completed handshake. The tag keeps
-			// this socket out of the line, and accepting it with hibernation keeps the
-			// runtime from reporting it as lost.
+			// Accepted, then closed: a close code needs a finished handshake; accept() logs it lost.
 			this.ctx.acceptWebSocket(server, ['busy']);
 			server.close(4001, 'busy');
 			return new Response(null, { status: 101, webSocket: client });

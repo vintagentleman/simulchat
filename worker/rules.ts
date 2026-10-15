@@ -12,7 +12,6 @@ export type Upgrade = {
 	origin: string | null;
 };
 
-// The room id when the request is an upgrade this relay serves, else null.
 export function upgradeRoom(request: Upgrade, allowed: readonly string[]): string | null {
 	if (request.method !== 'GET' || request.upgrade?.toLowerCase() !== 'websocket') return null;
 	if (request.origin === null || !allowed.includes(request.origin)) return null;
@@ -22,14 +21,11 @@ export function upgradeRoom(request: Upgrade, allowed: readonly string[]): strin
 
 export type Peer = { clientId: string; lastPing: number | null; joinedAt: number };
 
-// A peer that has not pinged yet is judged by when it joined.
 export function isLive(peer: Peer, now: number): boolean {
 	return now - (peer.lastPing ?? peer.joinedAt) < LIVE_MS;
 }
 
-// Peers to evict, and whether the newcomer fits beside the rest. A dead peer goes,
-// and so does the newcomer's own earlier socket: a tab reconnecting after a network
-// drop replaces the connection the relay has not yet noticed is gone.
+// The newcomer's own earlier socket goes even if live: that tab lost it in a network drop.
 export function admit(
 	peers: readonly Peer[],
 	clientId: string,

@@ -1,5 +1,4 @@
-// Leading and trailing edge: the first call fires at once, and calls inside the
-// window collapse into one fire at its end. `fire` reads the latest state itself.
+// Leading and trailing edge; `fire` takes no arguments and reads the latest state itself.
 export function throttle(fire: () => void, ms: number) {
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	let pending = false;

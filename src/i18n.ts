@@ -1,7 +1,5 @@
 export type Locale = 'en' | 'ru';
 
-// English is the master. The Russian values are Konstantin's to write; until then
-// they repeat the English, apart from the theme strings carried over from psychodynamometer.
 export const messages: Record<Locale, Record<string, string>> = {
 	en: {
 		appTitle: 'Simulchat',

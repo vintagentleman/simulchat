@@ -1,8 +1,7 @@
 import { t } from '../i18n.ts';
 import { locale } from './store.ts';
 
-// Resolve data-i18n / data-i18n-aria bindings under root. Dynamic text sets the
-// binding rather than the text, so a language switch can re-run this in place.
+// Dynamic text goes through bind(), so a language switch can re-run this in place.
 export function applyI18n(root: DocumentFragment | Element) {
 	for (const el of root.querySelectorAll('[data-i18n]')) {
 		el.textContent = t(locale, (el as HTMLElement).dataset.i18n ?? '');

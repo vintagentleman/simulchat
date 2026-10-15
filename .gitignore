@@ -4,3 +4,4 @@ playwright-report/
 test-results/
 .wrangler/
 worker-configuration.d.ts
+.superpowers/

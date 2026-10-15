@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="color-scheme" content="light dark" />
+		<script>
+			try {
+				const theme = localStorage.getItem('theme');
+				if (theme === 'light' || theme === 'dark') {
+					document.documentElement.classList.add('theme-' + theme);
+					document.querySelector('meta[name="color-scheme"]').setAttribute('content', theme);
+				}
+			} catch {
+				/* storage blocked — fall back to the system scheme */
+			}
+		</script>
+		<title>Simulchat</title>
+		<meta name="description" content="Two people, one link, live typing and no history." />
+		<meta property="og:title" content="Simulchat" />
+		<meta property="og:description" content="Two people, one link, live typing and no history." />
+		<meta property="og:type" content="website" />
+		<script type="module" src="/src/app.ts"></script>
+	</head>
+	<body>
+		<main id="app">
+			<noscript>This chat needs JavaScript.</noscript>
+		</main>
+	</body>
+</html>

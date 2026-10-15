@@ -1,0 +1,340 @@
+:root {
+	--page: oklch(98.2% 0.0026 106.4deg);
+	--surface: oklch(99.1% 0 0deg);
+	--ink: oklch(15% 0 0deg);
+	--ink-2: oklch(43.5% 0.005 91.5deg);
+	--muted: oklch(55.6% 0.0052 78.3deg);
+	--hairline: oklch(90.6% 0.0095 100deg);
+	--border: oklch(15% 0 0deg / 10%);
+	--viz-done: oklch(57.5% 0.1626 255.5deg);
+	--meter-track: oklch(92.1% 0.0068 97.4deg);
+	--accent-ink: oklch(48.2% 0.135 41.7deg);
+	--accent-wash: oklch(95.7% 0.0177 54deg);
+	--accent-mark: oklch(67.1% 0.175 40.6deg);
+	--invalid: oklch(57.5% 0.1862 25.2deg);
+	--radius: 12px;
+	--radius-bar: 4px;
+
+	color-scheme: light dark;
+}
+
+/* Dark tokens apply when the system is dark and the user hasn't pinned light,
+   and — duplicated below — when the user pins dark. Plain CSS can't share one
+   token set across a media-gated and a class-gated selector without
+   light-dark() or style queries (both above our Baseline floor), so the two
+   blocks are kept adjacent and identical by hand. */
+
+@media (prefers-color-scheme: dark) {
+	:root:not(.theme-light) {
+		--page: oklch(15.9% 0 0deg);
+		--surface: oklch(21.7% 0 0deg);
+		--ink: oklch(100% 0 0deg);
+		--ink-2: oklch(81.2% 0.0152 102.5deg);
+		--muted: oklch(62.3% 0.0092 91.5deg);
+		--hairline: oklch(29.2% 0.0036 106.6deg);
+		--border: oklch(100% 0 0deg / 10%);
+		--viz-done: oklch(62.2% 0.1612 255.1deg);
+		--meter-track: oklch(31.7% 0.0054 91.6deg);
+		--accent-ink: oklch(75.5% 0.1228 44.2deg);
+		--accent-wash: oklch(26.6% 0.0318 38.3deg);
+		--accent-mark: oklch(62.2% 0.1726 40.1deg);
+	}
+}
+
+:root.theme-dark {
+	--page: oklch(15.9% 0 0deg);
+	--surface: oklch(21.7% 0 0deg);
+	--ink: oklch(100% 0 0deg);
+	--ink-2: oklch(81.2% 0.0152 102.5deg);
+	--muted: oklch(62.3% 0.0092 91.5deg);
+	--hairline: oklch(29.2% 0.0036 106.6deg);
+	--border: oklch(100% 0 0deg / 10%);
+	--viz-done: oklch(62.2% 0.1612 255.1deg);
+	--meter-track: oklch(31.7% 0.0054 91.6deg);
+	--accent-ink: oklch(75.5% 0.1228 44.2deg);
+	--accent-wash: oklch(26.6% 0.0318 38.3deg);
+	--accent-mark: oklch(62.2% 0.1726 40.1deg);
+
+	color-scheme: dark;
+}
+
+:root.theme-light {
+	color-scheme: light;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+:where(a, button, input, select):focus-visible {
+	/* The UA ring is near-invisible against an active toggle's dark fill.
+	   :where() keeps specificity at zero so components can override. */
+	outline: 2px solid var(--viz-done);
+	outline-offset: 2px;
+}
+
+body {
+	margin: 0;
+	padding: 16px;
+	background: var(--page);
+	color: var(--ink);
+	font:
+		15px/1.5 system-ui,
+		-apple-system,
+		'Segoe UI',
+		sans-serif;
+}
+
+#app {
+	margin-inline: auto;
+	max-width: 640px;
+}
+
+button {
+	padding: 8px 14px;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--ink);
+	color: var(--surface);
+	font: inherit;
+	font-weight: 600;
+	cursor: pointer;
+
+	&.ghost {
+		background: var(--surface);
+		color: var(--ink);
+		font-weight: 400;
+
+		&:hover {
+			border-color: var(--muted);
+		}
+	}
+}
+
+.topbar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 10px;
+}
+
+.app-id {
+	min-width: 0;
+}
+
+.app-title {
+	margin: 0;
+	color: var(--ink);
+	font-weight: 600;
+	font-size: 14px;
+}
+
+.app-tagline {
+	margin: 2px 0 0;
+	color: var(--muted);
+	font-size: 12px;
+}
+
+.topbar-actions {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: 10px;
+}
+
+@media (width < 400px) {
+	.topbar {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.topbar-actions {
+		justify-content: flex-end;
+	}
+}
+
+.gh-link {
+	display: inline-flex;
+	color: var(--muted);
+}
+
+.gh-link:hover {
+	color: var(--ink);
+}
+
+.lang-toggle,
+.send-key,
+.theme-toggle {
+	display: flex;
+	flex: none;
+	overflow: hidden;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+
+	& button {
+		display: inline-flex;
+		align-items: center;
+		padding: 4px 10px;
+		border: 0;
+		border-radius: 0;
+		background: var(--surface);
+		color: var(--ink-2);
+		font-weight: 400;
+		font-size: 12px;
+
+		&.active {
+			background: var(--ink);
+			color: var(--surface);
+			font-weight: 600;
+		}
+
+		& + button {
+			border-left: 1px solid var(--border);
+		}
+
+		&:focus-visible {
+			/* The group clips to its rounded corners: an outward ring is invisible. */
+			outline-offset: -3px;
+		}
+	}
+}
+
+.theme-pin {
+	& .i-sun,
+	& .i-moon {
+		display: none;
+	}
+
+	&.pin-light .i-sun,
+	&.pin-dark .i-moon {
+		display: block;
+	}
+}
+
+.page {
+	overflow: hidden;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	background: var(--surface);
+}
+
+.note {
+	margin: 0;
+	padding: 10px 14px;
+	border-radius: 10px;
+	background: var(--accent-wash);
+	color: var(--accent-ink);
+	font-size: 13px;
+}
+
+.landing {
+	display: grid;
+	gap: 16px;
+	padding: 20px;
+
+	& .intro {
+		margin: 0;
+	}
+
+	& #start {
+		justify-self: start;
+	}
+}
+
+.line {
+	display: grid;
+	gap: 8px;
+	padding: 16px;
+}
+
+.status {
+	display: grid;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.status-text {
+	margin: 0;
+	color: var(--ink-2);
+	font-size: 13px;
+}
+
+.invite {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.invite-link {
+	flex: 1 1 12rem;
+	padding: 6px 10px;
+	min-width: 0;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--page);
+	color: var(--ink-2);
+	font: inherit;
+	font-size: 12px;
+}
+
+#retry {
+	justify-self: start;
+}
+
+.pane-label {
+	margin: 0;
+	color: var(--muted);
+	font-size: 12px;
+}
+
+.mirror,
+.composer {
+	padding: 10px 12px;
+	min-height: 7.5em;
+	overflow-wrap: anywhere;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	white-space: pre-wrap;
+	line-height: 1.5;
+	font-size: 16px;
+	font-family: inherit;
+}
+
+.mirror {
+	background: var(--page);
+	color: var(--ink);
+}
+
+.composer {
+	width: 100%;
+	background: var(--surface);
+	color: var(--ink);
+	resize: vertical;
+
+	&:focus-visible {
+		outline: 2px solid var(--viz-done);
+		outline-offset: 2px;
+	}
+}
+
+@supports (field-sizing: content) {
+	.composer {
+		resize: none;
+		field-sizing: content;
+	}
+}
+
+.controls {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.hint {
+	flex: 1 1 100%;
+	margin: 0;
+	color: var(--muted);
+	font-size: 12px;
+}

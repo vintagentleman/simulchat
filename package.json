@@ -1,0 +1,48 @@
+{
+	"name": "simulchat",
+	"version": "1.0.0",
+	"description": "Two-person live-typing chat with no send button and no history",
+	"type": "module",
+	"private": true,
+	"license": "MIT",
+	"engines": {
+		"node": ">=26"
+	},
+	"browserslist": [
+		"baseline widely available"
+	],
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
+		"preview": "vite preview",
+		"test": "vitest run",
+		"typecheck": "tsc",
+		"lint:js": "eslint .",
+		"lint:css": "stylelint \"**/*.css\"",
+		"lint:html": "markuplint \"**/*.html\"",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
+		"check": "npm run typecheck && npm run lint:html && npm run lint:css && npm run lint:js && npm run format:check && npm test && npm run build"
+	},
+	"devDependencies": {
+		"@commitlint/cli": "^21.2.3",
+		"@commitlint/config-conventional": "^21.2.3",
+		"@eslint/js": "^10.0.1",
+		"@types/node": "^26.6.5",
+		"browserslist": "^4.29.3",
+		"eslint": "^10.12.0",
+		"eslint-plugin-simple-import-sort": "^14.0.0",
+		"globals": "^17.13.0",
+		"lightningcss": "^1.33.0",
+		"markuplint": "^5.2.0",
+		"prettier": "^3.9.10",
+		"stylelint": "^17.16.0",
+		"stylelint-config-pepelsbey": "^1.6.0",
+		"stylelint-config-standard": "^40.0.0",
+		"stylelint-order": "^8.1.2",
+		"typescript": "^6.0.3",
+		"typescript-eslint": "^8.71.2",
+		"vite": "^8.3.4",
+		"vitest": "^5.0.4"
+	}
+}

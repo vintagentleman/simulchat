@@ -1,0 +1,11 @@
+{
+	"extends": ["markuplint:recommended"],
+	"excludeFiles": ["./dist/**/*"],
+	"overrides": {
+		"./index.html": {
+			"rules": {
+				"require-accessible-name": false
+			}
+		}
+	}
+}

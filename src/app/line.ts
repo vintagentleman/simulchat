@@ -1,4 +1,5 @@
 import { t } from '../i18n.ts';
+import type { LineKeys } from '../lib/crypto.ts';
 import { deriveLine } from '../lib/crypto.ts';
 import { newClientId } from '../lib/fragment.ts';
 import type { Tone } from '../lib/presence.ts';
@@ -111,7 +112,7 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 		}
 	};
 
-	const lead = (keys: Awaited<ReturnType<typeof deriveLine>>) =>
+	const lead = (keys: LineKeys) =>
 		new Promise<void>((release) => {
 			if (ended.signal.aborted) {
 				release();

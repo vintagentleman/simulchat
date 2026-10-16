@@ -183,3 +183,40 @@ test('a twin taking over after the other side left still says they left', async 
 	await a2.waitForTimeout(500);
 	await expect(status(a2)).toHaveText(en.statusLeft);
 });
+
+test('typing in a new twin before the leader answers is kept', async ({ join }) => {
+	const link = newLink();
+	const b = await join(link);
+	const a1 = await join(link);
+	await expect(status(a1)).toHaveText(en.statusConnected);
+	await a1.locator('#composer').pressSequentially('old');
+	await expect.poll(mirrorOf(b)).toBe('old');
+	const a2 = await a1.context().newPage();
+	// Holds the leader's state messages in this tab until release() is called.
+	await a2.addInitScript(() => {
+		const held: (() => void)[] = [];
+		const release = () => {
+			for (const deliver of held.splice(0)) deliver();
+		};
+		Object.assign(window, { held, release });
+		const listen = BroadcastChannel.prototype.addEventListener;
+		BroadcastChannel.prototype.addEventListener = function (
+			this: BroadcastChannel,
+			type: string,
+			listener: EventListener,
+		) {
+			listen.call(this, type, (event: Event) => {
+				if ((event as MessageEvent<{ type: string }>).data.type === 'state')
+					held.push(() => listener(event));
+				else listener(event);
+			});
+		};
+	});
+	await a2.goto(link);
+	await a2.waitForFunction(() => (window as unknown as { held: unknown[] }).held.length > 0);
+	await a2.locator('#composer').pressSequentially('new');
+	await expect.poll(mirrorOf(b)).toBe('new');
+	await a2.evaluate(() => (window as unknown as { release: () => void }).release());
+	await expect(a2.locator('#composer')).toHaveValue('new');
+	await expect(a1.locator('#composer')).toHaveValue('new');
+});

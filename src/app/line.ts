@@ -69,6 +69,7 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 	};
 
 	const share = (text: string) => {
+		caughtUp = true;
 		post({ type: 'text', text });
 		connection?.send(text);
 	};
@@ -90,7 +91,7 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 				if (connection !== null) return;
 				clientId = message.clientId;
 				view = message.view;
-				// Text is taken only once: later states may lag behind typing in this tab.
+				// Text is taken only before this tab is typed in: states may lag behind its typing.
 				if (!caughtUp) composer.value = message.text;
 				caughtUp = true;
 				render();

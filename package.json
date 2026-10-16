@@ -8,6 +8,7 @@
 	"engines": {
 		"node": ">=26"
 	},
+	"packageManager": "pnpm@12.8.2",
 	"scripts": {
 		"dev": "vite",
 		"build": "vite build",
@@ -19,7 +20,7 @@
 		"lint:html": "markuplint \"**/*.html\"",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
-		"check": "npm run typecheck && npm run lint:html && npm run lint:css && npm run lint:js && npm run format:check && npm test && npm run build",
+		"check": "pnpm typecheck && pnpm lint:html && pnpm lint:css && pnpm lint:js && pnpm format:check && pnpm test && pnpm build",
 		"dev:relay": "wrangler dev --env local --port 8787",
 		"test:e2e": "vite build --mode e2e && playwright test"
 	},

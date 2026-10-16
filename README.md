@@ -41,15 +41,15 @@ Node 26 or later.
 ```bash
 git clone https://github.com/vintagentleman/simulchat.git
 cd simulchat
-npm install
-npm run dev:relay    # the relay on :8787
-npm run dev          # the client on :5173
-npm run check        # the gate: typecheck, lint, format check, unit tests, build
-npm test             # unit tests (Vitest)
-npm run test:e2e     # end-to-end tests (Playwright), against local relays
+pnpm install
+pnpm dev:relay    # the relay on :8787
+pnpm dev          # the client on :5173
+pnpm check        # the gate: typecheck, lint, format check, unit tests, build
+pnpm test         # unit tests (Vitest)
+pnpm test:e2e     # end-to-end tests (Playwright), against local relays
 ```
 
-The end-to-end suite needs `npx playwright install chromium` once per machine. Commits follow [Conventional Commits](https://www.conventionalcommits.org), subject line only; enable the hook with `git config core.hooksPath .githooks`.
+The end-to-end suite needs `pnpm exec playwright install chromium` once per machine. Commits follow [Conventional Commits](https://www.conventionalcommits.org), subject line only; enable the hook with `git config core.hooksPath .githooks`.
 
 ## License
 

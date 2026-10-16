@@ -17,19 +17,19 @@ export default defineConfig({
 	projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
 	webServer: [
 		{
-			command: 'npm run preview -- --port 4173 --strictPort',
+			command: 'pnpm preview --port 4173 --strictPort',
 			url: 'http://localhost:4173',
 			reuseExistingServer: reuse,
 		},
 		// The relay answers plain requests with 404, so readiness is judged by the port.
 		{
-			command: 'npx wrangler dev --env local --port 8787',
+			command: 'pnpm exec wrangler dev --env local --port 8787',
 			port: 8787,
 			reuseExistingServer: reuse,
 		},
 		// Tiny rate limits, used only by the limiter tests.
 		{
-			command: 'npx wrangler dev --env limits --port 8788',
+			command: 'pnpm exec wrangler dev --env limits --port 8788',
 			port: 8788,
 			reuseExistingServer: reuse,
 		},

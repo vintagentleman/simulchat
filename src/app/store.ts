@@ -11,9 +11,10 @@ export function readStored(key: string): string | null {
 	}
 }
 
-export function writeStored(key: string, value: string) {
+export function writeStored(key: string, value: string | null) {
 	try {
-		localStorage.setItem(key, value);
+		if (value === null) localStorage.removeItem(key);
+		else localStorage.setItem(key, value);
 	} catch {
 		/* storage blocked — the choice lasts for this page only */
 	}

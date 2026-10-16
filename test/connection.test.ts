@@ -12,7 +12,6 @@ class FakeSocket extends EventTarget {
 	static OPEN = 1;
 	static sockets: FakeSocket[] = [];
 	readyState = FakeSocket.OPEN;
-	binaryType = 'blob';
 	url: string;
 	sent: (string | Uint8Array<ArrayBuffer>)[] = [];
 	constructor(url: string) {

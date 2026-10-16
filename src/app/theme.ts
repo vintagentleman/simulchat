@@ -1,13 +1,11 @@
+import { readStored, writeStored } from './store.ts';
+
 const KEY = 'theme';
 
 // The user's pinned scheme, or null when following the system.
 export function pinnedTheme(): 'light' | 'dark' | null {
-	try {
-		const v = localStorage.getItem(KEY);
-		return v === 'light' || v === 'dark' ? v : null;
-	} catch {
-		return null;
-	}
+	const v = readStored(KEY);
+	return v === 'light' || v === 'dark' ? v : null;
 }
 
 // What the pin toggle switches to: the pinned scheme, or the opposite of the
@@ -25,10 +23,5 @@ export function applyTheme(theme: 'light' | 'dark' | null) {
 	document
 		.querySelector('meta[name="color-scheme"]')
 		?.setAttribute('content', theme ?? 'light dark');
-	try {
-		if (theme) localStorage.setItem(KEY, theme);
-		else localStorage.removeItem(KEY);
-	} catch {
-		/* storage blocked — the class still themes this session */
-	}
+	writeStored(KEY, theme);
 }

@@ -53,6 +53,8 @@ export function openConnection(options: {
 	};
 
 	const apply = (event: PresenceEvent) => {
+		// A frame still being opened when the line is left would otherwise re-arm the deadline.
+		if (closed) return;
 		const result = step(presence, event, Date.now());
 		presence = result.state;
 		if (result.tone !== null) options.onTone(result.tone);

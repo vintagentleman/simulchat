@@ -8,6 +8,8 @@ A chat with no send button. Two people open the same link, and each sees the oth
 
 The idea goes back to Unix `talk(1)`. The end-to-end encrypted relay and the key carried in the link are borrowed from [unseen.fyi](https://github.com/meritt/unseen.fyi).
 
+[![An active line: the other side's box mirrored above, your own being typed below](.github/screenshot.png)](https://vintagentleman.github.io/simulchat/)
+
 ## Usage
 
 - Press **Start a line** and send the link to one other person. A line holds two people at a time.

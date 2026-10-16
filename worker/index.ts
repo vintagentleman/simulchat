@@ -100,9 +100,12 @@ export class Room {
 			this.drop(ws, 1008, 'frame');
 			return;
 		}
+		const { ip, clientId } = ws.deserializeAttachment() as Attachment;
 		// Forward before the asynchronous limit check, or a later frame could overtake this one.
-		for (const peer of this.open()) if (peer !== ws) peer.send(message);
-		const { ip } = ws.deserializeAttachment() as Attachment;
+		// A replaced socket delivers frames until its close completes; its successor must not get them.
+		for (const peer of this.open()) {
+			if ((peer.deserializeAttachment() as Attachment).clientId !== clientId) peer.send(message);
+		}
 		const { success } = await this.env.FRAMES.limit({ key: ip });
 		if (!success) this.drop(ws, 1008, 'rate');
 	}

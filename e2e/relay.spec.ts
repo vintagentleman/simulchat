@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { connect as tcp } from 'node:net';
 
 import { expect, test } from '@playwright/test';
 
@@ -24,6 +25,34 @@ function connect(port: number, path: string, origin = ORIGIN, client = clientId(
 		ws.addEventListener('close', (event) => resolve(event.code));
 	});
 	return { ws, received, opened, closed };
+}
+
+// A raw client that never answers the relay's close, like a replaced socket with frames still in flight.
+async function deafSocket(path: string, client: string) {
+	const socket = tcp(8787, 'localhost');
+	await new Promise((resolve) => socket.once('connect', resolve));
+	socket.write(
+		[
+			`GET /${path}?c=${client} HTTP/1.1`,
+			'Host: localhost:8787',
+			'Upgrade: websocket',
+			'Connection: Upgrade',
+			`Sec-WebSocket-Key: ${randomBytes(16).toString('base64')}`,
+			'Sec-WebSocket-Version: 13',
+			`Origin: ${ORIGIN}`,
+			'',
+			'',
+		].join('\r\n'),
+	);
+	await new Promise((resolve) => socket.once('data', resolve));
+	return {
+		// A final binary frame, masked with a zero key so the payload goes as it is.
+		send: (payload: Uint8Array) =>
+			socket.write(
+				Buffer.concat([Buffer.from([0x82, 0x80 | payload.length, 0, 0, 0, 0]), payload]),
+			),
+		destroy: () => socket.destroy(),
+	};
 }
 
 test.describe('relay rules', () => {
@@ -54,6 +83,23 @@ test.describe('relay rules', () => {
 		expect(a.received).toEqual(['1', '2', '2']);
 		a.ws.close();
 		again.ws.close();
+	});
+
+	test('a replaced socket’s late frames reach the partner but never its successor', async () => {
+		const id = room();
+		const late = await deafSocket(id, 'AAAAAAAAAAAAAAAAAAAAAA');
+		const b = connect(8787, id);
+		await b.opened;
+		const again = connect(8787, id, ORIGIN, 'AAAAAAAAAAAAAAAAAAAAAA');
+		await again.opened;
+		await expect.poll(() => b.received).toEqual(['2', '2']);
+		late.send(new Uint8Array(28));
+		await expect.poll(() => b.received).toContain(28);
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		expect(again.received).toEqual(['2']);
+		late.destroy();
+		again.ws.close();
+		b.ws.close();
 	});
 
 	test('partners get counts and each other’s frames; pings get pongs', async () => {

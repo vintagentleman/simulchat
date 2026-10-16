@@ -40,3 +40,14 @@ export function admit(
 export function acceptsFrame(message: string | ArrayBuffer): boolean {
 	return typeof message !== 'string' && message.byteLength <= MAX_FRAME_BYTES;
 }
+
+// An IPv6 host usually controls its whole /64, so keying on the full address lets it rotate freely.
+export function addressBlock(ip: string): string {
+	if (!ip.includes(':') || ip.includes('.')) return ip;
+	const [head, tail] = ip.split('::').map((part) => (part === '' ? [] : part.split(':')));
+	const groups =
+		tail === undefined
+			? head
+			: [...head, ...Array(8 - head.length - tail.length).fill('0'), ...tail];
+	return groups.slice(0, 4).join(':');
+}

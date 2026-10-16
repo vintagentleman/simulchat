@@ -5,6 +5,7 @@ import { encodeFrame } from '../src/lib/frame.ts';
 import type { Upgrade } from '../worker/rules.ts';
 import {
 	acceptsFrame,
+	addressBlock,
 	admit,
 	isLive,
 	LIVE_MS,
@@ -89,4 +90,19 @@ test('a full field of the widest characters still fits the relay’s frame cap',
 	// 2,000 code units of a 3-byte UTF-8 character: the composer's worst case.
 	const frame = await sealFrame(key, encodeFrame(null, '中'.repeat(2000)));
 	expect(frame.byteLength).toBeLessThanOrEqual(MAX_FRAME_BYTES);
+});
+
+test('rate limits key an IPv6 client by its /64, however the address is written', () => {
+	expect(addressBlock('2001:db8:1:2::1')).toBe('2001:db8:1:2');
+	expect(addressBlock('2001:db8:1:2:aaaa:bbbb:cccc:dddd')).toBe('2001:db8:1:2');
+	expect(addressBlock('2001:db8::1:2:3:4')).toBe('2001:db8:0:0');
+	expect(addressBlock('2001:db8:0:0:1::')).toBe('2001:db8:0:0');
+	expect(addressBlock('::1')).toBe('0:0:0:0');
+	expect(addressBlock('2001:db8:1:3::1')).not.toBe(addressBlock('2001:db8:1:2::1'));
+});
+
+test('rate limits key IPv4, IPv4-mapped and unknown clients by the whole address', () => {
+	expect(addressBlock('203.0.113.7')).toBe('203.0.113.7');
+	expect(addressBlock('::ffff:203.0.113.7')).toBe('::ffff:203.0.113.7');
+	expect(addressBlock('unknown')).toBe('unknown');
 });

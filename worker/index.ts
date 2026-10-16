@@ -1,12 +1,12 @@
 import type { Peer } from './rules.ts';
-import { acceptsFrame, admit, upgradeRoom } from './rules.ts';
+import { acceptsFrame, addressBlock, admit, upgradeRoom } from './rules.ts';
 
-type Attachment = { ip: string; clientId: string; joinedAt: number; closedByRelay?: true };
+type Attachment = { key: string; clientId: string; joinedAt: number; closedByRelay?: true };
 
 const OPEN = 1;
 
-function clientIp(request: Request): string {
-	return request.headers.get('CF-Connecting-IP') ?? 'unknown';
+function limitKey(request: Request): string {
+	return addressBlock(request.headers.get('CF-Connecting-IP') ?? 'unknown');
 }
 
 export default {
@@ -23,7 +23,7 @@ export default {
 			env.ALLOWED_ORIGINS,
 		);
 		if (room === null) return new Response(null, { status: 404 });
-		const { success } = await env.UPGRADES.limit({ key: clientIp(request) });
+		const { success } = await env.UPGRADES.limit({ key: limitKey(request) });
 		if (!success) return new Response(null, { status: 429 });
 		return env.ROOMS.get(env.ROOMS.idFromName(room)).fetch(request);
 	},
@@ -86,7 +86,7 @@ export class Room {
 			server.close(4001, 'busy');
 			return new Response(null, { status: 101, webSocket: client });
 		}
-		const attachment: Attachment = { ip: clientIp(request), clientId, joinedAt: now };
+		const attachment: Attachment = { key: limitKey(request), clientId, joinedAt: now };
 		server.serializeAttachment(attachment);
 		this.ctx.acceptWebSocket(server, ['line']);
 		this.announce(this.open());
@@ -100,13 +100,13 @@ export class Room {
 			this.drop(ws, 1008, 'frame');
 			return;
 		}
-		const { ip, clientId } = ws.deserializeAttachment() as Attachment;
+		const { key, clientId } = ws.deserializeAttachment() as Attachment;
 		// Forward before the asynchronous limit check, or a later frame could overtake this one.
 		// A replaced socket delivers frames until its close completes; its successor must not get them.
 		for (const peer of this.open()) {
 			if ((peer.deserializeAttachment() as Attachment).clientId !== clientId) peer.send(message);
 		}
-		const { success } = await this.env.FRAMES.limit({ key: ip });
+		const { success } = await this.env.FRAMES.limit({ key });
 		if (!success) this.drop(ws, 1008, 'rate');
 	}
 

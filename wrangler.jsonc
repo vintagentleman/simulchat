@@ -9,7 +9,7 @@
 	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
 	"ratelimits": [
 		{ "name": "UPGRADES", "namespace_id": "1001", "simple": { "limit": 20, "period": 60 } },
-		{ "name": "FRAMES", "namespace_id": "1002", "simple": { "limit": 300, "period": 10 } },
+		{ "name": "FRAMES", "namespace_id": "1002", "simple": { "limit": 600, "period": 60 } },
 	],
 	"vars": { "ALLOWED_ORIGINS": ["https://vintagentleman.github.io"] },
 	"env": {

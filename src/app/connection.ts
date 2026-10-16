@@ -1,7 +1,7 @@
 import type { LineKeys } from '../lib/crypto.ts';
 import { openFrame, sealFrame } from '../lib/crypto.ts';
 import type { Presence, PresenceEvent, Tone } from '../lib/presence.ts';
-import { initialPresence, nextDeadline, resumedPresence, statusOf, step } from '../lib/presence.ts';
+import { nextDeadline, resumedPresence, statusOf, step } from '../lib/presence.ts';
 import { serialQueue } from '../lib/queue.ts';
 import type { View } from '../lib/tabs.ts';
 
@@ -21,15 +21,15 @@ export function openConnection(options: {
 	keys: LineKeys;
 	clientId: string;
 	text: string;
-	mirror: string;
-	resumed: boolean;
+	// The previous leading tab's view, or the initial one.
+	view: View;
 	onView: (view: View) => void;
 	onTone: (tone: Tone) => void;
 }): Connection {
 	const { keys, clientId } = options;
 	let text = options.text;
-	let mirror = options.mirror;
-	let presence: Presence = options.resumed ? resumedPresence(Date.now()) : initialPresence;
+	let mirror = options.view.mirror;
+	let presence: Presence = resumedPresence(options.view, Date.now());
 	let socket: WebSocket | null = null;
 	let busy = false;
 	let closed = false;
@@ -48,6 +48,7 @@ export function openConnection(options: {
 		options.onView({
 			status: busy ? 'busy' : statusOf(presence),
 			partner: presence.partner,
+			seen: presence.seen,
 			mirror,
 		});
 	};

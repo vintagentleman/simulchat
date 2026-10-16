@@ -161,3 +161,25 @@ test('with three tabs, closing the leader hands over to exactly one twin', async
 	await expect(a2.locator('#composer')).toHaveValue('from three');
 	expect(sockets).toBe(2);
 });
+
+test('a twin taking over after the other side left still says they left', async ({ join }) => {
+	const link = newLink();
+	let sockets = 0;
+	const a1 = await join(link, (page) =>
+		page.context().routeWebSocket(RELAY, (ws) => {
+			sockets += 1;
+			ws.connectToServer();
+		}),
+	);
+	const b = await join(link);
+	await expect(status(a1)).toHaveText(en.statusConnected);
+	const a2 = await twin(a1, link);
+	await expect(status(a2)).toHaveText(en.statusConnected);
+	await b.context().close();
+	await expect(status(a2)).toHaveText(en.statusLeft, { timeout: 10_000 });
+	await a1.close();
+	await expect.poll(() => sockets).toBe(2);
+	// Long enough for the relay's count to reach the new leader.
+	await a2.waitForTimeout(500);
+	await expect(status(a2)).toHaveText(en.statusLeft);
+});

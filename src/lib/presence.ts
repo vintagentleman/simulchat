@@ -28,8 +28,9 @@ export const initialPresence: Presence = {
 	leavingAt: 0,
 };
 
-// A tab taking over the line after another tab, while the other side was present.
-export function resumedPresence(now: number): Presence {
+// A tab taking over the line after another tab keeps what that tab knew of the other side.
+export function resumedPresence(known: { partner: boolean; seen: boolean }, now: number): Presence {
+	if (!known.partner) return { ...initialPresence, seen: known.seen };
 	return { ...initialPresence, partner: true, seen: true, graceUntil: now + RECONNECT_GRACE_MS };
 }
 

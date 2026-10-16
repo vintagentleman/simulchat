@@ -65,11 +65,18 @@ test('the next deadline is the earliest pending one, or none', () => {
 });
 
 test('a tab taking over the line resumes quietly when the other side was present', () => {
-	const resumed = resumedPresence(0);
+	const resumed = resumedPresence({ partner: true, seen: true }, 0);
 	expect(statusOf(resumed)).toBe('connecting');
 	expect(resumed.partner).toBe(true);
 	const { state, tones } = run([[500, { type: 'count', count: 2 }]], resumed);
 	expect(statusOf(state)).toBe('connected');
+	expect(tones).toEqual([]);
+});
+
+test('a tab taking over the line after the other side left still says so', () => {
+	const resumed = resumedPresence({ partner: false, seen: true }, 0);
+	const { state, tones } = run([[500, { type: 'count', count: 1 }]], resumed);
+	expect(statusOf(state)).toBe('left');
 	expect(tones).toEqual([]);
 });
 

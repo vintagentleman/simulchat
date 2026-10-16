@@ -40,7 +40,7 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 
 	const tabId = newClientId();
 	let clientId = newClientId();
-	let view: View = { status: 'connecting', partner: false, mirror: '' };
+	let view: View = { status: 'connecting', partner: false, seen: false, mirror: '' };
 	let caughtUp = false;
 	// A Start-button click has already armed this tab's audio, so it starts as the one used.
 	let lastUsed: string | null = document.hasFocus() && tonesArmed() ? tabId : null;
@@ -122,8 +122,7 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 				keys,
 				clientId,
 				text: composer.value,
-				mirror: view.mirror,
-				resumed: view.partner,
+				view,
 				onView: (next) => {
 					view = next;
 					render();

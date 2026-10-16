@@ -39,8 +39,7 @@ test('a frame that finishes opening after close changes nothing', async () => {
 		keys,
 		clientId: 'c',
 		text: '',
-		mirror: '',
-		resumed: false,
+		view: { status: 'connecting', partner: false, seen: false, mirror: '' },
 		onView: (view) => views.push(view),
 		onTone: (tone) => tones.push(tone),
 	});

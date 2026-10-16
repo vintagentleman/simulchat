@@ -1,6 +1,6 @@
 import type { Status, Tone } from './presence.ts';
 
-export type View = { status: Status | 'busy'; partner: boolean; mirror: string };
+export type View = { status: Status | 'busy'; partner: boolean; seen: boolean; mirror: string };
 
 export type TabMessage =
 	| { type: 'hello' }

@@ -56,6 +56,28 @@ test.describe('theme toggle', () => {
 		await expect(page.locator('meta[name="color-scheme"]')).toHaveAttribute('content', 'dark');
 	});
 
+	test('with storage blocked, the pin still toggles and the buttons follow it', async ({
+		page,
+	}) => {
+		await page.addInitScript(() => {
+			Object.defineProperty(window, 'localStorage', {
+				get() {
+					throw new DOMException('blocked', 'SecurityError');
+				},
+			});
+		});
+		await page.goto(url);
+		await page.click('button.theme-pin');
+		await expect(page.locator('html')).toHaveClass(/theme-dark/);
+		await expect(page.locator('button.theme-pin')).toHaveAttribute('aria-pressed', 'true');
+		await page.click('button.theme[data-theme-choice="system"]');
+		await expect(page.locator('html')).not.toHaveClass(/theme-(light|dark)/);
+		await expect(page.locator('button.theme[data-theme-choice="system"]')).toHaveAttribute(
+			'aria-pressed',
+			'true',
+		);
+	});
+
 	test('back to system clears the pin class and storage', async ({ page }) => {
 		await page.goto(url);
 		await page.click('button.theme-pin');

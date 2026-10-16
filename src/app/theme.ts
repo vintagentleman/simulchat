@@ -1,11 +1,12 @@
-import { readStored, writeStored } from './store.ts';
+import { writeStored } from './store.ts';
 
 const KEY = 'theme';
 
 // The user's pinned scheme, or null when following the system.
 export function pinnedTheme(): 'light' | 'dark' | null {
-	const v = readStored(KEY);
-	return v === 'light' || v === 'dark' ? v : null;
+	const { classList } = document.documentElement;
+	if (classList.contains('theme-dark')) return 'dark';
+	return classList.contains('theme-light') ? 'light' : null;
 }
 
 // What the pin toggle switches to: the pinned scheme, or the opposite of the

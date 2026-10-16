@@ -87,6 +87,10 @@ body {
 		sans-serif;
 }
 
+[hidden] {
+	display: none !important;
+}
+
 #app {
 	margin-inline: auto;
 	max-width: 640px;

@@ -7,6 +7,7 @@ test('two people mirror each other’s typing, newlines included', async ({ join
 	const b = await join(link);
 	await expect(a.locator('.status-text')).toHaveText(en.statusConnected);
 	await expect(b.locator('.status-text')).toHaveText(en.statusConnected);
+	await expect(a.locator('.invite')).toBeHidden();
 	await a.locator('#composer').pressSequentially('hello');
 	await a.locator('#composer').press('Shift+Enter');
 	await a.locator('#composer').pressSequentially('world');

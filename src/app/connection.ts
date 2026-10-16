@@ -10,6 +10,12 @@ const PING_MS = 10_000;
 const PONG_TIMEOUT_MS = 30_000;
 const HEARTBEAT_MS = 15_000;
 const BUSY = 4001;
+const REPLACED = 1001;
+// Some networks freeze a connection to the relay after about 16 KB; a new socket starts a new count.
+const ROTATE_AT_BYTES = 11_000;
+const UPGRADE_BYTES = 1_000;
+const FRAMING_BYTES = 30;
+const ROTATION_RETRY_MS = 5_000;
 
 export type Connection = {
 	send(text: string): void;
@@ -35,6 +41,10 @@ export function openConnection(options: {
 	let awaitingWhole = false;
 	let presence: Presence = resumedPresence(options.view, Date.now());
 	let socket: WebSocket | null = null;
+	// A socket opened to take over from the current one, until it does.
+	let next: WebSocket | null = null;
+	let spent = 0;
+	let rotateAfter = 0;
 	let busy = false;
 	let closed = false;
 	let attempt = 0;
@@ -71,13 +81,24 @@ export function openConnection(options: {
 		render();
 	};
 
+	const spend = (bytes: number) => {
+		spent += bytes + FRAMING_BYTES;
+		if (spent < ROTATE_AT_BYTES || next !== null || Date.now() < rotateAfter) return;
+		if (socket?.readyState === WebSocket.OPEN) next = dial();
+	};
+
+	const transmit = (ws: WebSocket, data: string | Uint8Array<ArrayBuffer>) => {
+		ws.send(data);
+		spend(typeof data === 'string' ? data.length : data.byteLength);
+	};
+
 	const sendCurrent = (whole: boolean) => {
 		const current = text;
 		outbound.run(async () => {
 			if (presence.count !== 2 || socket?.readyState !== WebSocket.OPEN) return;
 			const frame = await sealFrame(keys.key, encodeFrame(whole ? null : lastSentText, current));
 			if (presence.count === 2 && socket?.readyState === WebSocket.OPEN) {
-				socket.send(frame);
+				transmit(socket, frame);
 				lastSentText = current;
 				lastSent = Date.now();
 			}
@@ -90,7 +111,7 @@ export function openConnection(options: {
 		outbound.run(async () => {
 			if (presence.count !== 2 || socket?.readyState !== WebSocket.OPEN) return;
 			const frame = await sealFrame(keys.key, resendRequest());
-			if (presence.count === 2 && socket?.readyState === WebSocket.OPEN) socket.send(frame);
+			if (presence.count === 2 && socket?.readyState === WebSocket.OPEN) transmit(socket, frame);
 		});
 	};
 
@@ -120,12 +141,18 @@ export function openConnection(options: {
 		attempt = 0;
 		apply({ type: 'count', count: Number(data) });
 		awaitingWhole = false;
-		// After a join, reconnect or handover, this frame's checksum shows the other side what it missed.
+		// After a join, reconnect, rotation or handover, this frame's checksum shows the other side what it missed.
 		if (presence.count === 2) sendCurrent(false);
+	};
+
+	const dropNext = () => {
+		next?.close(1000);
+		next = null;
 	};
 
 	const lost = (code: number) => {
 		socket = null;
+		dropNext();
 		if (code === BUSY) {
 			busy = true;
 			render();
@@ -138,24 +165,52 @@ export function openConnection(options: {
 
 	const ping = (ws: WebSocket) => {
 		if (pingSent === 0) pingSent = Date.now();
-		ws.send('ping');
+		transmit(ws, 'ping');
 	};
 
-	const connect = () => {
-		if (closed) return;
+	const promote = () => {
+		const old = socket;
+		socket = next;
+		next = null;
+		spent = UPGRADE_BYTES;
+		pingSent = 0;
+		old?.close(1000);
+		if (socket?.readyState === WebSocket.OPEN) ping(socket);
+	};
+
+	const dial = () => {
 		const ws = new WebSocket(`${import.meta.env.VITE_RELAY_URL}/${keys.roomId}?c=${clientId}`);
 		ws.binaryType = 'arraybuffer';
-		socket = ws;
 		ws.addEventListener('open', () => {
+			if (ws !== socket) return;
 			pingSent = 0;
 			ping(ws);
 		});
 		ws.addEventListener('message', (event: MessageEvent<string | ArrayBuffer>) => {
-			if (ws === socket) inbound.run(() => receive(event.data));
+			// The relay's count is a new socket's first message: the line has moved over to it.
+			if (ws === next) promote();
+			if (ws !== socket) return;
+			spend(typeof event.data === 'string' ? event.data.length : event.data.byteLength);
+			inbound.run(() => receive(event.data));
 		});
 		ws.addEventListener('close', (event) => {
-			if (ws === socket && !closed) lost(event.code);
+			if (closed) return;
+			if (ws === next) {
+				next = null;
+				rotateAfter = Date.now() + ROTATION_RETRY_MS;
+			} else if (ws === socket) {
+				// The relay closes the old socket with 1001 as the new one joins.
+				if (event.code === REPLACED && next !== null) promote();
+				else lost(event.code);
+			}
 		});
+		return ws;
+	};
+
+	const connect = () => {
+		if (closed) return;
+		socket = dial();
+		spent = UPGRADE_BYTES;
 	};
 
 	// Not timed from the last pong: a hidden tab's timer may fire only once a minute.
@@ -177,8 +232,8 @@ export function openConnection(options: {
 	connect();
 
 	return {
-		send(next) {
-			text = next;
+		send(value) {
+			text = value;
 			sendCurrent(false);
 		},
 		retry() {
@@ -196,6 +251,7 @@ export function openConnection(options: {
 			clearTimeout(deadlineTimer);
 			socket?.close(1000);
 			socket = null;
+			dropNext();
 		},
 	};
 }

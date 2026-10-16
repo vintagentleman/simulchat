@@ -169,3 +169,111 @@ test('a splice that does not apply still shows the partner is there', async () =
 	expect(tones).toEqual(['join']);
 	expect(views.at(-1)?.mirror).toBe(LONG);
 });
+
+const shut = (socket: FakeSocket | undefined, code: number) =>
+	socket?.dispatchEvent(Object.assign(new Event('close'), { code }));
+
+// About 11.6 KB of frames from the other side: past the rotation budget.
+async function spendBudget(
+	socket: FakeSocket | undefined,
+	seal: (last: string | null, text: string) => Promise<ArrayBuffer>,
+) {
+	const big = await seal(null, 'x'.repeat(1000));
+	for (let i = 0; i < 11; i++) deliver(socket, big);
+}
+
+const connectedSince = (views: View[]) =>
+	views.slice(views.findIndex((view) => view.status === 'connected'));
+
+test('at the byte budget a second socket opens for the same line and takes over on its count', async () => {
+	const { views, tones, seal } = await start();
+	const [first] = FakeSocket.sockets;
+	deliver(first, '2');
+	await vi.waitFor(() => expect(tones).toEqual(['join']));
+	await spendBudget(first, seal);
+	expect(FakeSocket.sockets).toHaveLength(2);
+	const second = FakeSocket.sockets[1];
+	expect(second?.url).toBe(first?.url);
+	deliver(second, '2');
+	expect(first?.readyState).toBe(3);
+	deliver(first, await seal(null, 'late'));
+	deliver(second, await seal(null, 'new'));
+	await vi.waitFor(() => expect(views.at(-1)?.mirror).toBe('new'));
+	expect(views.map((view) => view.mirror)).not.toContain('late');
+	expect(connectedSince(views).every((view) => view.status === 'connected')).toBe(true);
+	expect(tones).toEqual(['join']);
+});
+
+test('the old socket closing with 1001 first also hands the line over', async () => {
+	const { views, tones, seal } = await start();
+	const [first] = FakeSocket.sockets;
+	deliver(first, '2');
+	await vi.waitFor(() => expect(tones).toEqual(['join']));
+	await spendBudget(first, seal);
+	const second = FakeSocket.sockets[1];
+	shut(first, 1001);
+	deliver(second, '2');
+	deliver(second, await seal(null, 'after'));
+	await vi.waitFor(() => expect(views.at(-1)?.mirror).toBe('after'));
+	expect(connectedSince(views).every((view) => view.status === 'connected')).toBe(true);
+	expect(tones).toEqual(['join']);
+});
+
+test('a second socket that fails leaves the current one in use, and the next try waits 5 s', async () => {
+	const { views, tones, seal } = await start();
+	const [first] = FakeSocket.sockets;
+	deliver(first, '2');
+	await vi.waitFor(() => expect(tones).toEqual(['join']));
+	await spendBudget(first, seal);
+	shut(FakeSocket.sockets[1], 1006);
+	const big = await seal(null, 'x'.repeat(1000));
+	deliver(first, big);
+	expect(FakeSocket.sockets).toHaveLength(2);
+	vi.advanceTimersByTime(5_000);
+	deliver(first, big);
+	expect(FakeSocket.sockets).toHaveLength(3);
+	deliver(first, await seal(null, 'still'));
+	await vi.waitFor(() => expect(views.at(-1)?.mirror).toBe('still'));
+	expect(connectedSince(views).every((view) => view.status === 'connected')).toBe(true);
+	expect(tones).toEqual(['join']);
+});
+
+test('a pong timeout while a second socket is pending drops both and reconnects', async () => {
+	const { tones, seal } = await start();
+	const [first] = FakeSocket.sockets;
+	deliver(first, '2');
+	await vi.waitFor(() => expect(tones).toEqual(['join']));
+	await spendBudget(first, seal);
+	expect(FakeSocket.sockets).toHaveLength(2);
+	await vi.advanceTimersByTimeAsync(50_000);
+	expect(FakeSocket.sockets.map((socket) => socket.readyState)).toEqual([3, 3]);
+	await vi.advanceTimersByTimeAsync(1_000);
+	expect(FakeSocket.sockets.map((socket) => socket.readyState)).toEqual([3, 3, 1]);
+});
+
+test('leaving the line during a rotation closes both sockets', async () => {
+	const { connection, tones, seal } = await start();
+	const [first] = FakeSocket.sockets;
+	deliver(first, '2');
+	await vi.waitFor(() => expect(tones).toEqual(['join']));
+	await spendBudget(first, seal);
+	connection.close();
+	expect(FakeSocket.sockets.map((socket) => socket.readyState)).toEqual([3, 3]);
+});
+
+test('rotating while alone keeps the status and plays no tone', async () => {
+	const { views, tones } = await start();
+	const [first] = FakeSocket.sockets;
+	deliver(first, '1');
+	await vi.waitFor(() => expect(views.at(-1)?.status).toBe('waiting'));
+	// Pings and pongs alone: about 68 bytes every ten seconds.
+	for (let i = 0; i < 200 && FakeSocket.sockets.length < 2; i++) {
+		await vi.advanceTimersByTimeAsync(10_000);
+		deliver(first, 'pong');
+	}
+	expect(FakeSocket.sockets).toHaveLength(2);
+	deliver(FakeSocket.sockets[1], '1');
+	await vi.waitFor(() => expect(first?.readyState).toBe(3));
+	expect(views.slice(1).every((view) => view.status === 'waiting')).toBe(true);
+	expect(tones).toEqual([]);
+});

@@ -1,5 +1,6 @@
 import type { LineKeys } from '../lib/crypto.ts';
 import { openFrame, sealFrame } from '../lib/crypto.ts';
+import { applyFrame, encodeFrame, isResendRequest, resendRequest } from '../lib/frame.ts';
 import type { Presence, PresenceEvent, Tone } from '../lib/presence.ts';
 import { nextDeadline, resumedPresence, statusOf, step } from '../lib/presence.ts';
 import { serialQueue } from '../lib/queue.ts';
@@ -29,6 +30,9 @@ export function openConnection(options: {
 	const { keys, clientId } = options;
 	let text = options.text;
 	let mirror = options.view.mirror;
+	let lastSentText: string | null = null;
+	// Set once this side has asked for the whole field, until a frame applies or a count arrives.
+	let awaitingWhole = false;
 	let presence: Presence = resumedPresence(options.view, Date.now());
 	let socket: WebSocket | null = null;
 	let busy = false;
@@ -44,12 +48,12 @@ export function openConnection(options: {
 	const inbound = serialQueue();
 
 	const render = () => {
-		if (!presence.partner) mirror = '';
 		options.onView({
 			status: busy ? 'busy' : statusOf(presence),
 			partner: presence.partner,
 			seen: presence.seen,
-			mirror,
+			// Kept while the other side is away, so their next splice still applies.
+			mirror: presence.partner ? mirror : '',
 		});
 	};
 
@@ -67,24 +71,45 @@ export function openConnection(options: {
 		render();
 	};
 
-	const sendCurrent = () => {
-		const snapshot = text;
+	const sendCurrent = (whole: boolean) => {
+		const current = text;
 		outbound.run(async () => {
 			if (presence.count !== 2 || socket?.readyState !== WebSocket.OPEN) return;
-			const frame = await sealFrame(keys.key, snapshot);
+			const frame = await sealFrame(keys.key, encodeFrame(whole ? null : lastSentText, current));
 			if (presence.count === 2 && socket?.readyState === WebSocket.OPEN) {
 				socket.send(frame);
+				lastSentText = current;
 				lastSent = Date.now();
 			}
+		});
+	};
+
+	const askForWhole = () => {
+		if (awaitingWhole) return;
+		awaitingWhole = true;
+		outbound.run(async () => {
+			if (presence.count !== 2 || socket?.readyState !== WebSocket.OPEN) return;
+			const frame = await sealFrame(keys.key, resendRequest());
+			if (presence.count === 2 && socket?.readyState === WebSocket.OPEN) socket.send(frame);
 		});
 	};
 
 	const receive = async (data: string | ArrayBuffer) => {
 		if (typeof data !== 'string') {
 			if (presence.count !== 2) return;
-			const opened = await openFrame(keys.key, data);
-			if (opened === null || presence.count !== 2) return;
-			mirror = opened;
+			const plain = await openFrame(keys.key, data);
+			if (plain === null || presence.count !== 2) return;
+			if (isResendRequest(plain)) {
+				sendCurrent(true);
+			} else {
+				const applied = applyFrame(mirror, plain);
+				if (applied === null) {
+					askForWhole();
+				} else {
+					mirror = applied;
+					awaitingWhole = false;
+				}
+			}
 			apply({ type: 'frame' });
 			return;
 		}
@@ -94,7 +119,9 @@ export function openConnection(options: {
 		}
 		attempt = 0;
 		apply({ type: 'count', count: Number(data) });
-		if (presence.count === 2) sendCurrent();
+		awaitingWhole = false;
+		// After a join, reconnect or handover, this frame's checksum shows the other side what it missed.
+		if (presence.count === 2) sendCurrent(false);
 	};
 
 	const lost = (code: number) => {
@@ -142,8 +169,8 @@ export function openConnection(options: {
 			return;
 		}
 		ping(ws);
-		// Frames are snapshots, so resending the field is a heartbeat that changes nothing.
-		if (presence.count === 2 && Date.now() - lastSent >= HEARTBEAT_MS) sendCurrent();
+		// An unchanged field goes as an empty splice: a heartbeat that also checks both sides agree.
+		if (presence.count === 2 && Date.now() - lastSent >= HEARTBEAT_MS) sendCurrent(false);
 	}, PING_MS);
 
 	render();
@@ -152,7 +179,7 @@ export function openConnection(options: {
 	return {
 		send(next) {
 			text = next;
-			sendCurrent();
+			sendCurrent(false);
 		},
 		retry() {
 			attempt = 0;

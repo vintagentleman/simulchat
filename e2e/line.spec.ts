@@ -123,3 +123,30 @@ test('switching language relabels the line without dropping the call', async ({ 
 	await a.locator('#composer').pressSequentially('still on');
 	await expect.poll(mirrorOf(b)).toBe('still on');
 });
+
+test('edits anywhere in the field, emoji included, mirror exactly', async ({ join }) => {
+	const link = newLink();
+	const a = await join(link);
+	const b = await join(link);
+	await expect(b.locator('.status-text')).toHaveText(en.statusConnected);
+	const composer = a.locator('#composer');
+	const select = (start: number, end: number) =>
+		composer.evaluate(
+			(el, [from, to]) => (el as HTMLTextAreaElement).setSelectionRange(from, to),
+			[start, end],
+		);
+	await composer.pressSequentially('hello world');
+	await select(0, 0);
+	await composer.pressSequentially('😀 ');
+	await composer.press('End');
+	await composer.press('Backspace');
+	await composer.press('Backspace');
+	await expect.poll(mirrorOf(b)).toBe('😀 hello wor');
+	await select(3, 8);
+	await composer.pressSequentially('привет');
+	await expect.poll(mirrorOf(b)).toBe('😀 привет wor');
+	// 🈀 and 😀 share their low surrogate.
+	await select(0, 2);
+	await composer.pressSequentially('🈀');
+	await expect.poll(mirrorOf(b)).toBe('🈀 привет wor');
+});

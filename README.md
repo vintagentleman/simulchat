@@ -16,7 +16,7 @@ The idea goes back to Unix `talk(1)`. The end-to-end encrypted relay and the key
 
 ## How it works
 
-Starting a line draws 32 random bytes and puts them after the `#` in the link, a part of the URL that browsers never send to a server. From that secret, each browser derives a room id, which it uses to find the other person, and an AES-GCM key, which never leaves the browser. Every change to your box travels as one encrypted message holding the whole box.
+Starting a line draws 32 random bytes and puts them after the `#` in the link, a part of the URL that browsers never send to a server. From that secret, each browser derives a room id, which it uses to find the other person, and an AES-GCM key, which never leaves the browser. Every change to your box travels as one encrypted message holding the whole box, or only what changed.
 
 The relay is a Cloudflare Worker with a Durable Object per room. It pairs the two connections and passes messages between them without being able to read them. It stores nothing, and once both people leave, the room ceases to exist.
 

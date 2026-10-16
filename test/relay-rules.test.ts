@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 
 import { deriveLine, sealFrame } from '../src/lib/crypto.ts';
+import { encodeFrame } from '../src/lib/frame.ts';
 import type { Upgrade } from '../worker/rules.ts';
 import {
 	acceptsFrame,
@@ -86,6 +87,6 @@ test('frames: binary up to the cap passes; text and oversized frames do not', ()
 test('a full field of the widest characters still fits the relay’s frame cap', async () => {
 	const { key } = await deriveLine(new Uint8Array(32));
 	// 2,000 code units of a 3-byte UTF-8 character: the composer's worst case.
-	const frame = await sealFrame(key, '中'.repeat(2000));
+	const frame = await sealFrame(key, encodeFrame(null, '中'.repeat(2000)));
 	expect(frame.byteLength).toBeLessThanOrEqual(MAX_FRAME_BYTES);
 });

@@ -1,5 +1,4 @@
 const encoder = new TextEncoder();
-const decoder = new TextDecoder('utf-8', { fatal: true });
 const IV_BYTES = 12;
 const TAG_BYTES = 16;
 
@@ -25,17 +24,23 @@ export async function deriveLine(secret: Uint8Array<ArrayBuffer>): Promise<LineK
 	return { roomId: Array.from(room, (b) => b.toString(16).padStart(2, '0')).join(''), key };
 }
 
-// Frame layout: 12-byte random IV, then the AES-GCM ciphertext and tag of the UTF-8 text.
-export async function sealFrame(key: CryptoKey, text: string): Promise<Uint8Array<ArrayBuffer>> {
+// Frame layout: 12-byte random IV, then the AES-GCM ciphertext and tag of the plaintext.
+export async function sealFrame(
+	key: CryptoKey,
+	plain: Uint8Array<ArrayBuffer>,
+): Promise<Uint8Array<ArrayBuffer>> {
 	const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
-	const sealed = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoder.encode(text));
+	const sealed = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plain);
 	const frame = new Uint8Array(IV_BYTES + sealed.byteLength);
 	frame.set(iv);
 	frame.set(new Uint8Array(sealed), IV_BYTES);
 	return frame;
 }
 
-export async function openFrame(key: CryptoKey, frame: ArrayBuffer): Promise<string | null> {
+export async function openFrame(
+	key: CryptoKey,
+	frame: ArrayBuffer,
+): Promise<Uint8Array<ArrayBuffer> | null> {
 	if (frame.byteLength < IV_BYTES + TAG_BYTES) return null;
 	try {
 		const plain = await crypto.subtle.decrypt(
@@ -43,7 +48,7 @@ export async function openFrame(key: CryptoKey, frame: ArrayBuffer): Promise<str
 			key,
 			frame.slice(IV_BYTES),
 		);
-		return decoder.decode(plain);
+		return new Uint8Array(plain);
 	} catch {
 		return null;
 	}

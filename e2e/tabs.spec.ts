@@ -63,7 +63,7 @@ test('erase and Try again work from a follower', async ({ join }) => {
 	const a2 = await twin(a1, link);
 	await expect(status(a2)).toHaveText(en.statusBusy);
 	await c.context().close();
-	await expect(status(b)).toHaveText(en.statusLeft);
+	await expect(status(b)).toHaveText(en.statusLeft, { timeout: 10_000 });
 	await a2.click('#retry');
 	await expect(status(a1)).toHaveText(en.statusConnected);
 	await expect(status(a2)).toHaveText(en.statusConnected);

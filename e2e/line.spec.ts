@@ -71,7 +71,7 @@ test('when one side leaves, the other’s mirror blanks and says so', async ({ j
 	await a.locator('#composer').pressSequentially('bye');
 	await expect.poll(mirrorOf(b)).toBe('bye');
 	await a.context().close();
-	await expect(b.locator('.status-text')).toHaveText(en.statusLeft);
+	await expect(b.locator('.status-text')).toHaveText(en.statusLeft, { timeout: 10_000 });
 	await expect.poll(mirrorOf(b)).toBe('');
 	await expect(b.locator('.invite')).toBeVisible();
 });

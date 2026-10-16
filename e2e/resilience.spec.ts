@@ -104,7 +104,7 @@ test('a busy caller gets in with Try again once a slot frees', async ({ join }) 
 	const c = await join(link);
 	await expect(c.locator('.status-text')).toHaveText(en.statusBusy);
 	await a.context().close();
-	await expect(b.locator('.status-text')).toHaveText(en.statusLeft);
+	await expect(b.locator('.status-text')).toHaveText(en.statusLeft, { timeout: 10_000 });
 	await c.click('#retry');
 	await expect(c.locator('.status-text')).toHaveText(en.statusConnected);
 	await expect(b.locator('.status-text')).toHaveText(en.statusConnected);

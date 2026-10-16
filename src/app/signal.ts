@@ -1,25 +1,5 @@
 import type { Tone } from '../lib/presence.ts';
 
-const GLYPH =
-	'<rect x="4" y="7" width="24" height="7" rx="2" fill="#8b8f96"/><rect x="4" y="18" width="24" height="7" rx="2" fill="#8b8f96"/>';
-const DOT = '<circle cx="25" cy="7" r="6" fill="#e8683c"/>';
-
-function iconHref(dot: boolean) {
-	const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${GLYPH}${dot ? DOT : ''}</svg>`;
-	return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-}
-
-export function showPartnerDot(on: boolean) {
-	let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-	if (link === null) {
-		link = document.createElement('link');
-		link.rel = 'icon';
-		document.head.append(link);
-	}
-	const href = iconHref(on);
-	if (link.href !== href) link.href = href;
-}
-
 let audio: AudioContext | null = null;
 
 export function tonesArmed(): boolean {

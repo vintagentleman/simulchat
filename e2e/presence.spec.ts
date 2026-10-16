@@ -4,18 +4,6 @@ import { en, expect, JOIN, LEAVE, newLink, recordTones, test, tonesOf } from './
 
 const RELAY = /:8787\//;
 
-test('the tab icon shows a dot while the other side is there', async ({ join }) => {
-	const link = newLink();
-	const a = await join(link);
-	const icon = a.locator('link[rel="icon"]');
-	await expect(icon).toHaveAttribute('href', /^data:image\/svg\+xml/);
-	await expect(icon).not.toHaveAttribute('href', /circle/);
-	const b = await join(link);
-	await expect(icon).toHaveAttribute('href', /circle/);
-	await b.context().close();
-	await expect(icon).not.toHaveAttribute('href', /circle/);
-});
-
 test('a rising tone when the other side joins, a falling one when they leave', async ({ join }) => {
 	const link = newLink();
 	const a = await join(link, recordTones);
@@ -55,7 +43,6 @@ test('a partner whose connection silently dies is shown as gone', async ({ join 
 		await a.waitForTimeout(100);
 	}
 	await expect(a.locator('.status-text')).toHaveText(en.statusLeft);
-	await expect(a.locator('link[rel="icon"]')).not.toHaveAttribute('href', /circle/);
 });
 
 test('an idle partner stays connected through their heartbeats', async ({ join }) => {

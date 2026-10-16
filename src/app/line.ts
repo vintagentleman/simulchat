@@ -11,7 +11,7 @@ import { throttle } from '../lib/throttle.ts';
 import type { Connection } from './connection.ts';
 import { openConnection } from './connection.ts';
 import { bind, slot } from './dom.ts';
-import { playTone, showPartnerDot, tonesArmed } from './signal.ts';
+import { playTone, tonesArmed } from './signal.ts';
 import { app, locale, readStored, writeStored } from './store.ts';
 
 const THROTTLE_MS = 40;
@@ -58,7 +58,6 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 		retryButton.hidden = view.status !== 'busy';
 		const title = t(locale, 'appTitle');
 		document.title = view.status === 'connected' ? `● ${title}` : title;
-		showPartnerDot(view.partner);
 		mirror.textContent = view.mirror;
 	};
 
@@ -222,7 +221,6 @@ export function enterLine(secret: Uint8Array<ArrayBuffer>): Line {
 			channel?.close();
 			channel = null;
 			document.title = t(locale, 'appTitle');
-			showPartnerDot(false);
 		},
 		relabel() {
 			render();
